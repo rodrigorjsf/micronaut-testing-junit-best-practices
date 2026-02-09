@@ -5,7 +5,7 @@ COPY mvnw pom.xml ./
 RUN ./mvnw dependency:resolve -q
 COPY src src
 RUN ./mvnw package -DskipTests -q
-RUN native-image -cp target/demo-*.jar -H:Class=com.example.Application -o demo
+RUN native-image -cp target/demo-0.1.jar -H:Class=com.example.Application -o demo
 
 FROM frolvlad/alpine-glibc
 RUN apk update && apk add libstdc++

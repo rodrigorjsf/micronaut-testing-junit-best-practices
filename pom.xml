@@ -297,6 +297,21 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
             </plugin>
+
+            <!-- Native Maven Plugin: Handles native image build time initialization dependencies -->
+            <plugin>
+                <groupId>org.graalvm.buildtools</groupId>
+                <artifactId>native-maven-plugin</artifactId>
+                <version>0.10.6</version> <!-- Use latest version -->
+                <configuration>
+                    <imageName>${project.artifactId}</imageName>
+                    <mainClass>${exec.mainClass}</mainClass>
+                    <buildArgs>
+                        <arg>--initialize-at-build-time=ch.qos.logback.classic.Logger</arg>
+                        <arg>--initialize-at-run-time=ch.qos.logback.core.ConsoleAppender</arg>
+                    </buildArgs>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 

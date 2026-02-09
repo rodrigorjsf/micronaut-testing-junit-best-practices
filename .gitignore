@@ -29,3 +29,4 @@ demo.build_artifacts.txt
 
 .claude/
 
+/${project.build.directory}/

@@ -1,9 +1,12 @@
 package com.example.entities;
 
+import io.micronaut.core.annotation.Introspected;
 import io.micronaut.data.annotation.DateCreated;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
@@ -15,25 +18,32 @@ import java.util.Set;
 /**
  * Author entity.
  */
+@Introspected
 @Entity
-@Table(name = "author")
+@Table(name = "author", schema = "public")
 public class AuthorEntity {
 
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @NotBlank
+    @Column
     private String name;
 
+    @Column
     @DateCreated
     private LocalDateTime dateCreated;
 
-    @OneToMany(mappedBy = "author")
+    @OneToMany(mappedBy = "author", targetEntity = BookEntity.class)
     private Set<BookEntity> books = new HashSet<>();
 
     public AuthorEntity(@NotBlank String name) {
         this.name = name;
+    }
+
+    public AuthorEntity() {
+
     }
 
     public Long getId() {

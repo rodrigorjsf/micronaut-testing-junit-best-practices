@@ -20,6 +20,8 @@
     <properties>
         <!-- Java 25 LTS -->
         <jdk.version>25</jdk.version>
+        <maven.version>25</maven.version>
+        <source.version>25</source.version>
         <release.version>25</release.version>
         <micronaut.version>4.10.7</micronaut.version>
         <exec.mainClass>com.example.Application</exec.mainClass>
@@ -249,7 +251,7 @@
                         <path>
                             <groupId>io.micronaut</groupId>
                             <artifactId>micronaut-inject-java</artifactId>
-                            <version>${micronaut.core.version}</version>
+                            <version>${micronaut.version}</version>
                         </path>
                         <!-- Micronaut Validation processor: generates validation logic
                              at compile time for @Validated beans -->

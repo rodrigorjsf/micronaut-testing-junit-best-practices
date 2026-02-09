@@ -1,39 +1,48 @@
 package com.example.entities;
 
+import io.micronaut.core.annotation.Introspected;
 import io.micronaut.data.annotation.DateCreated;
-
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.OneToOne;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+
 import java.time.LocalDateTime;
 
 /**
  * Book entity.
  */
+@Introspected
 @Entity
-@Table(name = "book")
+@Table(name = "book", schema = "public")
 public class BookEntity {
 
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column
     @NotBlank
     private String title;
 
     @Min(1)
+    @Column
     private int pages;
 
     @DateCreated
+    @Column
     private LocalDateTime dateCreated;
 
     @NotNull
-    @OneToOne
+    @JoinColumn
+    @ManyToOne(targetEntity =  AuthorEntity.class)
     private AuthorEntity author;
 
     public BookEntity(@NotBlank String title,
@@ -42,6 +51,18 @@ public class BookEntity {
         this.title = title;
         this.pages = pages;
         this.author = author;
+    }
+
+    public BookEntity(Long id, String title, int pages, LocalDateTime dateCreated, AuthorEntity author) {
+        this.id = id;
+        this.title = title;
+        this.pages = pages;
+        this.dateCreated = dateCreated;
+        this.author = author;
+    }
+
+    public BookEntity() {
+
     }
 
     public Long getId() {

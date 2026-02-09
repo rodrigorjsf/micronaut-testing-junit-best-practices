@@ -12,11 +12,12 @@ micronaut:
 
 datasources:
   default:
-    url: jdbc:postgresql://localhost:5432/micronaut
+    url: ${DATASOURCES_DEFAULT_URL:`jdbc:postgresql://localhost:5432/micronaut`}
     driverClassName: org.postgresql.Driver
-    username: postgres
-    password: secret
-    schema-generate: CREATE_DROP
+    username: ${DATASOURCES_DEFAULT_USERNAME:micronaut}
+    password: ${DATASOURCES_DEFAULT_PASSWORD:secret}
+    dialect: POSTGRES
+    schema-generate: create_drop
 ---
 omdb:
   base-url: http://www.omdbapi.com/

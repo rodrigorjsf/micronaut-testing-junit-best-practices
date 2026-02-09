@@ -243,13 +243,24 @@ You have two options:
 Start a PostgreSQL database:
 
 ```bash
-docker run -it --rm -p 5432:5432 -e POSTGRES_PASSWORD=secret -e POSTGRES_DB=micronaut postgres:16-alpine
+docker run -it --rm -p 5432:5432 \
+  -e POSTGRES_USER=micronaut \
+  -e POSTGRES_PASSWORD=secret \
+  -e POSTGRES_DB=micronaut \
+  postgres:16-alpine
 ```
 
-Start the application:
+Start the application (in another terminal):
 
 ```bash
 ./mvnw mn:run
+```
+
+Or from the packaged jar:
+
+```bash
+./mvnw package -DskipTests
+java -jar target/demo-0.1.jar
 ```
 
 ## Endpoints
@@ -275,21 +286,51 @@ The application generates an OpenAPI spec at http://localhost:8080/swagger/demo-
 
 Swagger-UI is available at http://localhost:8080/swagger-ui/index.html.
 
-## GraalVM Native Image
+## Docker
 
-Build the native image with Docker:
+### JVM image (recommended)
+
+Build the image:
 
 ```bash
 ./docker-build.sh
-docker run -p 8080:8080 demo
 ```
 
-Or locally with GraalVM 25 installed:
+Run with a PostgreSQL container on a shared network:
 
 ```bash
-./mvnw package -Dpackaging=native-image
+docker network create demo-net
+
+docker run -d --name postgres --network demo-net \
+  -e POSTGRES_USER=micronaut \
+  -e POSTGRES_PASSWORD=secret \
+  -e POSTGRES_DB=micronaut \
+  postgres:16-alpine
+
+docker run --rm --name demo-app --network demo-net -p 8080:8080 \
+  -e DATASOURCES_DEFAULT_URL=jdbc:postgresql://postgres:5432/micronaut \
+  demo
+```
+
+### GraalVM native image
+
+Build the native image with Docker (no local GraalVM required, takes several minutes):
+
+```bash
+./docker-build.sh graalvm
+```
+
+Run the same way as the JVM image above.
+
+To build a native image locally (requires [GraalVM 25](https://www.graalvm.org/) with
+`native-image` installed):
+
+```bash
+./mvnw package -Dpackaging=native-image -DskipTests
 ./target/demo
 ```
+
+> The local native binary still needs a running PostgreSQL (see [Run the application](#run-the-application)).
 
 ## Credits
 

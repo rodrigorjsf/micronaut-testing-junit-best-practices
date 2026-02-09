@@ -1,12 +1,14 @@
-FROM ghcr.io/graalvm/native-image-community:25 AS graalvm
-
-COPY . /home/app/demo
-WORKDIR /home/app/demo
-
-RUN native-image -cp target/demo-*-all.jar -o demo
+FROM ghcr.io/graalvm/native-image-community:25 AS build
+WORKDIR /app
+COPY .mvn .mvn
+COPY mvnw pom.xml ./
+RUN ./mvnw dependency:resolve -q
+COPY src src
+RUN ./mvnw package -DskipTests -q
+RUN native-image -cp target/demo-*.jar -H:Class=com.example.Application -o demo
 
 FROM frolvlad/alpine-glibc
 RUN apk update && apk add libstdc++
 EXPOSE 8080
-COPY --from=graalvm /home/app/demo/demo /app/demo
+COPY --from=build /app/demo /app/demo
 ENTRYPOINT ["/app/demo"]

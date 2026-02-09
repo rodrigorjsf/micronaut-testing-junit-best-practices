@@ -1,0 +1,301 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!-- Micronaut parent POM: manages dependency versions, plugin configuration,
+         and provides the Micronaut BOM (Bill of Materials) for consistent versioning -->
+    <parent>
+        <groupId>io.micronaut.platform</groupId>
+        <artifactId>micronaut-parent</artifactId>
+        <version>4.10.7</version>
+    </parent>
+
+    <groupId>com.example</groupId>
+    <artifactId>demo</artifactId>
+    <version>0.1</version>
+    <packaging>jar</packaging>
+
+    <properties>
+        <!-- Java 25 LTS -->
+        <jdk.version>25</jdk.version>
+        <release.version>25</release.version>
+        <micronaut.version>4.10.7</micronaut.version>
+        <exec.mainClass>com.example.Application</exec.mainClass>
+        <micronaut.aot.enabled>false</micronaut.aot.enabled>
+        <micronaut.aot.packageName>com.example.aot.generated</micronaut.aot.packageName>
+
+        <!-- Micronaut runtime type: netty-based HTTP server -->
+        <micronaut.runtime>netty</micronaut.runtime>
+
+        <!-- Disable Micronaut test resources (we manage Testcontainers manually) -->
+        <micronaut.test.resources.enabled>false</micronaut.test.resources.enabled>
+
+        <!-- Dependency versions not managed by the Micronaut BOM -->
+        <testcontainers.version>2.0.3</testcontainers.version>
+        <postgresql.version>42.7.9</postgresql.version>
+        <assertj.version>3.27.3</assertj.version>
+    </properties>
+
+    <repositories>
+        <repository>
+            <id>central</id>
+            <url>https://repo.maven.apache.org/maven2</url>
+        </repository>
+    </repositories>
+
+    <dependencies>
+
+        <!-- ==================== -->
+        <!-- Compile Dependencies -->
+        <!-- ==================== -->
+
+        <!-- Micronaut HTTP server powered by Netty: provides the embedded HTTP server
+             for handling REST requests with non-blocking I/O -->
+        <dependency>
+            <groupId>io.micronaut</groupId>
+            <artifactId>micronaut-http-server-netty</artifactId>
+            <scope>compile</scope>
+        </dependency>
+
+        <!-- Micronaut HTTP client: declarative and low-level HTTP client
+             for making outbound HTTP requests (e.g., to the OMDB API) -->
+        <dependency>
+            <groupId>io.micronaut</groupId>
+            <artifactId>micronaut-http-client</artifactId>
+            <scope>compile</scope>
+        </dependency>
+
+        <!-- Micronaut Serialization with Jackson: compile-time generated serializers/deserializers
+             for JSON, replacing runtime reflection with build-time processing -->
+        <dependency>
+            <groupId>io.micronaut.serde</groupId>
+            <artifactId>micronaut-serde-jackson</artifactId>
+            <scope>compile</scope>
+        </dependency>
+
+        <!-- Micronaut Data JDBC: compile-time repository implementation for JDBC,
+             generating SQL queries from repository interface method signatures -->
+        <dependency>
+            <groupId>io.micronaut.data</groupId>
+            <artifactId>micronaut-data-jdbc</artifactId>
+            <scope>compile</scope>
+        </dependency>
+
+        <!-- Micronaut JDBC connection pool with HikariCP: high-performance JDBC
+             connection pooling for database access -->
+        <dependency>
+            <groupId>io.micronaut.sql</groupId>
+            <artifactId>micronaut-jdbc-hikari</artifactId>
+            <scope>compile</scope>
+        </dependency>
+
+        <!-- Micronaut Validation: bean validation support using Jakarta Validation,
+             moved to a separate module in Micronaut 4 -->
+        <dependency>
+            <groupId>io.micronaut.validation</groupId>
+            <artifactId>micronaut-validation</artifactId>
+            <scope>compile</scope>
+        </dependency>
+
+        <!-- Jakarta Persistence API: JPA annotations (@Entity, @Table, @Id, etc.)
+             used by entity classes for ORM mapping with Micronaut Data -->
+        <dependency>
+            <groupId>jakarta.persistence</groupId>
+            <artifactId>jakarta.persistence-api</artifactId>
+            <scope>compile</scope>
+        </dependency>
+
+        <!-- Jakarta Transaction API: provides @Transactional annotation support
+             for declarative transaction management -->
+        <dependency>
+            <groupId>jakarta.transaction</groupId>
+            <artifactId>jakarta.transaction-api</artifactId>
+            <scope>compile</scope>
+        </dependency>
+
+        <!-- Swagger/OpenAPI annotations: enables API documentation generation
+             from annotations on controller methods -->
+        <dependency>
+            <groupId>io.swagger.core.v3</groupId>
+            <artifactId>swagger-annotations</artifactId>
+            <scope>compile</scope>
+        </dependency>
+
+        <!-- ==================== -->
+        <!-- Runtime Dependencies -->
+        <!-- ==================== -->
+
+        <!-- Logback: SLF4J logging implementation providing configurable
+             console and file logging output -->
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- PostgreSQL JDBC driver: enables connectivity to PostgreSQL databases -->
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <version>${postgresql.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- SnakeYAML: YAML parser required by Micronaut 4 for reading application.yml
+             configuration files (no longer included transitively) -->
+        <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- ================== -->
+        <!-- Test Dependencies  -->
+        <!-- ================== -->
+
+        <!-- Micronaut Test JUnit 5: integrates Micronaut's DI container with JUnit 5,
+             providing @MicronautTest annotation for test lifecycle management -->
+        <dependency>
+            <groupId>io.micronaut.test</groupId>
+            <artifactId>micronaut-test-junit5</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- JUnit Jupiter API: JUnit 5 testing API with annotations like
+             @Test, @BeforeEach, @ParameterizedTest, etc. -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- JUnit Jupiter Engine: test runtime engine that discovers and executes
+             JUnit 5 tests -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- JUnit Jupiter Params: support for parameterized tests with @MethodSource,
+             @CsvSource, @ValueSource, etc. -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-params</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- AssertJ: fluent assertion library providing readable test assertions
+             like assertThat(value).isEqualTo(expected) -->
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <version>${assertj.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Testcontainers Core: framework for running disposable Docker containers
+             during integration tests -->
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers</artifactId>
+            <version>${testcontainers.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Testcontainers JUnit Jupiter: JUnit 5 integration for Testcontainers,
+             providing @Testcontainers and @Container annotations -->
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers-junit-jupiter</artifactId>
+            <version>${testcontainers.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Testcontainers PostgreSQL module: pre-configured PostgreSQL container
+             for integration testing with a real database -->
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers-postgresql</artifactId>
+            <version>${testcontainers.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- Micronaut Maven Plugin: handles Micronaut-specific build tasks including
+                 AOT compilation, Docker image generation, and native image builds -->
+            <plugin>
+                <groupId>io.micronaut.maven</groupId>
+                <artifactId>micronaut-maven-plugin</artifactId>
+                <configuration>
+                    <configFile>aot-${packaging}.properties</configFile>
+                </configuration>
+            </plugin>
+            <!-- Maven Compiler Plugin: configures Java compilation with Micronaut
+                 annotation processors for compile-time DI and AOP -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <parameters>true</parameters>
+                    <annotationProcessorPaths combine.children="append">
+                        <!-- Micronaut Inject processor: generates bean definitions
+                             and dependency injection metadata at compile time -->
+                        <path>
+                            <groupId>io.micronaut</groupId>
+                            <artifactId>micronaut-inject-java</artifactId>
+                            <version>${micronaut.core.version}</version>
+                        </path>
+                        <!-- Micronaut Validation processor: generates validation logic
+                             at compile time for @Validated beans -->
+                        <path>
+                            <groupId>io.micronaut.validation</groupId>
+                            <artifactId>micronaut-validation-processor</artifactId>
+                        </path>
+                        <!-- Micronaut Data processor: generates repository implementations
+                             and query logic at compile time -->
+                        <path>
+                            <groupId>io.micronaut.data</groupId>
+                            <artifactId>micronaut-data-processor</artifactId>
+                        </path>
+                        <!-- Micronaut Serde processor: generates serializers/deserializers
+                             at compile time for @Serdeable classes -->
+                        <path>
+                            <groupId>io.micronaut.serde</groupId>
+                            <artifactId>micronaut-serde-processor</artifactId>
+                            <version>${micronaut.serialization.version}</version>
+                            <exclusions>
+                                <exclusion>
+                                    <groupId>io.micronaut</groupId>
+                                    <artifactId>micronaut-inject</artifactId>
+                                </exclusion>
+                            </exclusions>
+                        </path>
+                        <!-- Micronaut OpenAPI processor: generates OpenAPI/Swagger specification
+                             from controller annotations at compile time -->
+                        <path>
+                            <groupId>io.micronaut.openapi</groupId>
+                            <artifactId>micronaut-openapi</artifactId>
+                        </path>
+                    </annotationProcessorPaths>
+                    <compilerArgs>
+                        <arg>-Amicronaut.processing.group=com.example</arg>
+                        <arg>-Amicronaut.processing.module=demo</arg>
+                    </compilerArgs>
+                </configuration>
+            </plugin>
+
+            <!-- Maven Surefire Plugin: runs unit and integration tests with JUnit 5 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

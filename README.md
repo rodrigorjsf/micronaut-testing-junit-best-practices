@@ -50,8 +50,116 @@ container, so Docker must be running.
 ## Test Strategy
 
 The project covers three levels of testing. All tests share a real PostgreSQL database via
-Testcontainers and a [leakage detector](docs/CONVERSION_GUIDE.md#5-detector-de-vazamento-de-dados)
+Testcontainers and a [leakage detector](docs/CONVERSION_GUIDE.md#5-data-leakage-detector)
 that fails if any test leaves data behind.
+
+```mermaid
+---
+title: Test Architecture
+---
+classDiagram
+    class AbstractIntegrationTest {
+        <<abstract>>
+        #AuthorRepository authorRepository
+        #BookRepository bookRepository
+        +getProperties() Map~String,String~
+        #mockSecurityServiceEnabled() boolean
+        #getSpecName() String
+        +checkLeakage()
+    }
+
+    class AbstractServerTest {
+        <<abstract>>
+        #HttpClient httpClient
+        #getClient() BlockingHttpClient
+    }
+
+    class AuthorFixture {
+        <<interface>>
+        +saveAuthor(name) AuthorEntity
+        +createAuthorRequest(name) CreateAuthorRequest
+    }
+
+    class BookFixture {
+        <<interface>>
+        +saveBook(title, pages, author) BookEntity
+    }
+
+    class TestPropertyProvider {
+        <<interface>>
+        +getProperties() Map
+    }
+
+    TestPropertyProvider <|.. AbstractIntegrationTest : implements
+    AbstractIntegrationTest <|-- AbstractServerTest : extends
+    AbstractIntegrationTest <|-- SaveBookConstraintsTest : extends
+    AbstractIntegrationTest <|-- AuthorServiceImplConstraintsTest : extends
+    AbstractIntegrationTest <|-- AuthorRepositoryTest : extends
+    AbstractIntegrationTest <|-- BookRepositoryTest : extends
+    AbstractIntegrationTest <|-- AuthorServiceTest : extends
+    AbstractServerTest <|-- AuthorControllerTest : extends
+    AbstractServerTest <|-- AuthorControllerFindAuthorTest : extends
+    AbstractServerTest <|-- MovieControllerTest : extends
+    AbstractServerTest <|-- OpenApiTest : extends
+    AuthorFixture <|.. AuthorControllerTest : uses
+    AuthorFixture <|.. AuthorRepositoryTest : uses
+    BookFixture <|.. BookRepositoryTest : uses
+    BookFixture <|.. AuthorRepositoryTest : uses
+
+    style AbstractIntegrationTest fill:#2d6a4f,color:#fff,stroke:#1b4332
+    style AbstractServerTest fill:#1b4332,color:#fff,stroke:#081c15
+    style TestPropertyProvider fill:#40916c,color:#fff,stroke:#2d6a4f
+    style AuthorFixture fill:#c0392b,color:#fff,stroke:#922b21
+    style BookFixture fill:#c0392b,color:#fff,stroke:#922b21
+    style SaveBookConstraintsTest fill:#457b9d,color:#fff,stroke:#1d3557
+    style AuthorServiceImplConstraintsTest fill:#457b9d,color:#fff,stroke:#1d3557
+    style AuthorRepositoryTest fill:#6a994e,color:#fff,stroke:#386641
+    style BookRepositoryTest fill:#6a994e,color:#fff,stroke:#386641
+    style AuthorServiceTest fill:#6a994e,color:#fff,stroke:#386641
+    style AuthorControllerTest fill:#b8860b,color:#fff,stroke:#8b6508
+    style AuthorControllerFindAuthorTest fill:#b8860b,color:#fff,stroke:#8b6508
+    style MovieControllerTest fill:#b8860b,color:#fff,stroke:#8b6508
+    style OpenApiTest fill:#b8860b,color:#fff,stroke:#8b6508
+```
+
+```mermaid
+---
+title: What Each Test Level Exercises
+---
+flowchart LR
+    subgraph Unit["Unit Tests"]
+        U[Validator / @Validated bean]
+    end
+
+    subgraph Integration["Integration Tests"]
+        I[Repository / Service]
+    end
+
+    subgraph E2E["End-to-End Tests"]
+        E[HTTP Client]
+    end
+
+    U -->|"validates"| V[Validation Layer]
+    I -->|"calls directly"| S[Service Layer]
+    S -->|"persists via"| R[Repository Layer]
+    E -->|"sends HTTP request"| C[Controller]
+    C -->|"delegates to"| S2[Service Layer]
+    S2 -->|"persists via"| R2[Repository Layer]
+    R -->|"reads/writes"| DB[(PostgreSQL\nTestcontainer)]
+    R2 -->|"reads/writes"| DB
+    V ~~~ S
+
+    style Unit fill:#1d3557,color:#fff,stroke:#152747
+    style Integration fill:#386641,color:#fff,stroke:#2d5535
+    style E2E fill:#7d6608,color:#fff,stroke:#5c4b06
+    style V fill:#1a5276,color:#fff,stroke:#154360
+    style S fill:#2d6a4f,color:#fff,stroke:#1b4332
+    style R fill:#2d6a4f,color:#fff,stroke:#1b4332
+    style C fill:#b8860b,color:#fff,stroke:#8b6508
+    style S2 fill:#b8860b,color:#fff,stroke:#8b6508
+    style R2 fill:#b8860b,color:#fff,stroke:#8b6508
+    style DB fill:#336791,color:#fff,stroke:#1d3557
+```
 
 ### Unit Tests — bean validation in isolation
 
@@ -94,7 +202,7 @@ handling.
 | [`AuthorControllerFindAuthorWithSecurityTest`](src/test/java/com/example/controllers/AuthorControllerFindAuthorWithSecurityTest.java) | Same endpoint but with the **real** `SecurityServiceImpl`. Without `username=admin`, returns 401. With `username=admin`, returns 200. Demonstrates toggling the mock via `mockSecurityServiceEnabled()`.                        |
 | [`AuthorControllerMockServiceTest`](src/test/java/com/example/controllers/AuthorControllerMockServiceTest.java)                       | Replaces `AuthorService` with an inner-class mock that throws `RuntimeException`. `POST /authors` returns 500. Demonstrates per-test bean replacement via `@Primary` + `@Requires(property = "spec.name")`.                     |
 | [`MovieControllerTest`](src/test/java/com/example/controllers/MovieControllerTest.java)                                               | Starts a **secondary embedded server** as a mock OMDB API. `GET /movies/by-title?title=...` hits the main server, which calls the mock, and returns the movie. Demonstrates external API mocking without third-party libraries. |
-| [`OpenApiTest`](src/test/java/com/example/openapi/OpenApiTest.java)                                                                   | `GET /swagger/demo-0.1.yml` returns 200, verifying the OpenAPI spec is generated and served correctly.                                                                                                                        |
+| [`OpenApiTest`](src/test/java/com/example/openapi/OpenApiTest.java)                                                                   | `GET /swagger/demo-0.1.yml` returns 200, verifying the OpenAPI spec is generated and served correctly.                                                                                                                          |
 | [`OmdbClientTest`](src/test/java/com/example/omdb/OmdbClientTest.java)                                                                | Calls the **real** OMDB API (skipped by default — see [OMDB API Key](#omdb-api-key) below).                                                                                                                                     |
 
 **How**: extend `AbstractServerTest` (provides `HttpClient` + database), send requests via

@@ -3,7 +3,8 @@
 This document details **everything** that needed to be adapted, changed, and added to convert the tests
 in this project from Groovy/Spock to Java/JUnit 5, while simultaneously migrating from Micronaut 2 to Micronaut 4.
 
-> **Original project**: [ilopmar/micronaut-testing-best-practices](https://github.com/ilopmar/micronaut-testing-best-practices)
+> **Original project
+**: [ilopmar/micronaut-testing-best-practices](https://github.com/ilopmar/micronaut-testing-best-practices)
 
 ---
 
@@ -43,12 +44,12 @@ some of Groovy's syntactic conveniences.
 |-----------------------------------------|--------------------------------------------------|
 | `class FooSpec extends Specification`   | `class FooTest extends AbstractIntegrationTest`  |
 | Traits (`implements PostgresqlFixture`) | Interfaces with default methods                  |
-| `setup()` / `cleanup()`                | `@BeforeEach` / `@AfterEach`                     |
-| `setupSpec()` / `cleanupSpec()`        | `@BeforeAll` / `@AfterAll`                       |
-| `where:` / `then:` blocks              | `@ParameterizedTest` + `@MethodSource`           |
+| `setup()` / `cleanup()`                 | `@BeforeEach` / `@AfterEach`                     |
+| `setupSpec()` / `cleanupSpec()`         | `@BeforeAll` / `@AfterAll`                       |
+| `where:` / `then:` blocks               | `@ParameterizedTest` + `@MethodSource`           |
 | `thrown(Exception)`                     | `assertThrows(Exception.class, () -> ...)`       |
-| `@Unroll`                              | `@ParameterizedTest(name = "...")`               |
-| `response.status == HttpStatus.OK`     | `assertEquals(HttpStatus.OK, response.status())` |
+| `@Unroll`                               | `@ParameterizedTest(name = "...")`               |
+| `response.status == HttpStatus.OK`      | `assertEquals(HttpStatus.OK, response.status())` |
 
 ### Technical Deep Dive
 
@@ -73,6 +74,45 @@ via inheritance and traits. We condensed everything into two abstract classes:
 AbstractIntegrationTest          <-- everything that needs a database
     |
     +-- AbstractServerTest       <-- everything that also needs an HTTP client
+```
+
+```mermaid
+---
+title: Test Base Class Hierarchy
+---
+classDiagram
+    class TestPropertyProvider {
+        <<interface>>
+        +getProperties() Map
+    }
+
+    class AbstractIntegrationTest {
+        <<abstract>>
+        @MicronautTest(transactional = false)
+        @TestInstance(PER_CLASS)
+        #authorRepository
+        #bookRepository
+        +getProperties()
+        #mockSecurityServiceEnabled()
+        #getSpecName()
+        +checkLeakage()
+    }
+
+    class AbstractServerTest {
+        <<abstract>>
+        #httpClient
+        #getClient()
+    }
+
+    TestPropertyProvider <|.. AbstractIntegrationTest : implements
+    AbstractIntegrationTest <|-- AbstractServerTest : extends
+    AbstractIntegrationTest ..> PostgresqlTestContainer : depends on
+    note for AbstractIntegrationTest "Database tests:\nrepositories, services,\nvalidation"
+    note for AbstractServerTest "HTTP tests:\ncontrollers, OpenAPI,\nexternal APIs"
+
+    style TestPropertyProvider fill:#40916c,color:#fff,stroke:#2d6a4f
+    style AbstractIntegrationTest fill:#2d6a4f,color:#fff,stroke:#1b4332
+    style AbstractServerTest fill:#1b4332,color:#fff,stroke:#081c15
 ```
 
 If your test only needs **the database** (repositories, services), extend `AbstractIntegrationTest`.
@@ -213,6 +253,46 @@ public final class PostgresqlTestContainer {
 }
 ```
 
+```mermaid
+flowchart TD
+    subgraph JVM["JVM (single test run)"]
+        TC["PostgresqlTestContainer\n(static singleton)"]
+
+        subgraph T1["Test Class 1"]
+            CTX1["ApplicationContext 1"]
+            TPP1["getProperties()\n→ init()"]
+        end
+
+        subgraph T2["Test Class 2"]
+            CTX2["ApplicationContext 2"]
+            TPP2["getProperties()\n→ init()"]
+        end
+
+        subgraph T3["Test Class 3"]
+            CTX3["ApplicationContext 3"]
+            TPP3["getProperties()\n→ init()"]
+        end
+    end
+
+    PG[(PostgreSQL\nDocker Container)]
+    TPP1 -->|"initializes (first call)"| TC
+    TPP2 -->|"reuses (already started)"| TC
+    TPP3 -->|"reuses (already started)"| TC
+    TC -->|"connects via JDBC"| PG
+
+    style TC fill:#b8860b,color:#fff,stroke:#8b6508
+    style PG fill:#336791,color:#fff,stroke:#1d3557
+    style T1 fill:#2d6a4f,color:#fff,stroke:#1b4332
+    style T2 fill:#2d6a4f,color:#fff,stroke:#1b4332
+    style T3 fill:#2d6a4f,color:#fff,stroke:#1b4332
+    style CTX1 fill:#1a5276,color:#fff,stroke:#154360
+    style CTX2 fill:#1a5276,color:#fff,stroke:#154360
+    style CTX3 fill:#1a5276,color:#fff,stroke:#154360
+    style TPP1 fill:#386641,color:#fff,stroke:#2d5535
+    style TPP2 fill:#386641,color:#fff,stroke:#2d5535
+    style TPP3 fill:#386641,color:#fff,stroke:#2d5535
+```
+
 **Manual Singleton vs `@Testcontainers`**: We chose not to use `@Testcontainers` +
 `@Container` from JUnit Jupiter because those annotations control the lifecycle per test class.
 With the manual singleton, **a single container** serves all classes. This matters because:
@@ -267,6 +347,56 @@ public interface AuthorFixture {
 }
 ```
 
+```mermaid
+---
+title: Fixture Interface Resolution
+---
+classDiagram
+    class AuthorFixture {
+        <<interface>>
+        +getAuthorRepository()* AuthorRepository
+        +saveAuthor(name) AuthorEntity
+        +saveAuthor() AuthorEntity
+        +createAuthorRequest(name) CreateAuthorRequest
+    }
+
+    class BookFixture {
+        <<interface>>
+        +getBookRepository()* BookRepository
+        +getAuthorRepository()* AuthorRepository
+        +saveBook(title, pages, author) BookEntity
+    }
+
+    class AbstractIntegrationTest {
+        <<abstract>>
+        #authorRepository
+        #bookRepository
+        +getAuthorRepository()
+        +getBookRepository()
+    }
+
+    class AbstractServerTest {
+        <<abstract>>
+        #httpClient
+    }
+
+    class AuthorControllerTest {
+        +createAuthorReturns201()
+        +createAuthorWithNullNameReturns400()
+    }
+
+    AbstractIntegrationTest <|-- AbstractServerTest : extends
+    AbstractServerTest <|-- AuthorControllerTest : extends
+    AuthorFixture <|.. AuthorControllerTest : uses fixtures from
+    AbstractIntegrationTest ..> AuthorFixture : provides getAuthorRepository()
+
+    style AuthorFixture fill:#c0392b,color:#fff,stroke:#922b21
+    style BookFixture fill:#c0392b,color:#fff,stroke:#922b21
+    style AbstractIntegrationTest fill:#2d6a4f,color:#fff,stroke:#1b4332
+    style AbstractServerTest fill:#1b4332,color:#fff,stroke:#081c15
+    style AuthorControllerTest fill:#b8860b,color:#fff,stroke:#8b6508
+```
+
 **How does resolution work?** When `AuthorControllerTest extends AbstractServerTest implements AuthorFixture`:
 
 1. `AuthorFixture` requires the method `getAuthorRepository()`.
@@ -295,6 +425,7 @@ This ensures isolation between tests — no test depends on data from another.
 ### Technical Deep Dive
 
 ```java
+
 @AfterEach
 void checkLeakage() {
     assertThat(bookRepository.count())
@@ -329,6 +460,7 @@ tests inherit this property from the base class. When a test needs the real serv
 `AuthorControllerFindAuthorWithSecurityTest`), it simply overrides the method:
 
 ```java
+
 @Override
 protected boolean mockSecurityServiceEnabled() {
     return false;
@@ -338,6 +470,7 @@ protected boolean mockSecurityServiceEnabled() {
 ### Technical Deep Dive
 
 ```java
+
 @Primary
 @Singleton
 @Requires(env = Environment.TEST)
@@ -365,17 +498,31 @@ public class MockSecurityService implements SecurityService {
 
 **Container decision flow:**
 
-```
-ApplicationContext initializing...
-  |
-  +-- SecurityServiceImpl (@Singleton) -> always registered
-  |
-  +-- MockSecurityService (@Primary @Singleton)
-  |       +-- @Requires(env=TEST) -> are we in test? YES
-  |       +-- @Requires(property="mockSecurityService"="true") -> property exists and is "true"?
-  |                                                                YES (for most tests)
-  |
-  +-- Injection of SecurityService -> @Primary MockSecurityService wins
+```mermaid
+flowchart TD
+    Start["ApplicationContext initializing"] -->|"registers"| Real["SecurityServiceImpl\n@Singleton"]
+    Start -->|"evaluates"| Mock{"MockSecurityService\n@Primary @Singleton"}
+    Mock -->|"checks @Requires(env=TEST)"| Q1{"Running in\ntest environment?"}
+    Q1 -->|"No"| NotRegistered["Bean NOT registered"]
+    Q1 -->|"Yes"| Q2{"Property\nmockSecurityService\n= true?"}
+    Q2 -->|"No"| NotRegistered
+    Q2 -->|"Yes"| Registered["Bean registered\nwith @Primary"]
+    Real -->|"candidate"| Injection{"Injection of\nSecurityService"}
+    Registered -->|"candidate (preferred)"| Injection
+    NotRegistered -.->|"excluded"| Injection
+    Injection -->|"@Primary wins"| UseMock["MockSecurityService\n(always returns true)"]
+    Injection -->|"only candidate"| UseReal["SecurityServiceImpl\n(checks username=admin)"]
+
+    style Start fill:#264653,color:#fff,stroke:#1d3344
+    style Mock fill:#457b9d,color:#fff,stroke:#1d3557
+    style Q1 fill:#1a5276,color:#fff,stroke:#154360
+    style Q2 fill:#1a5276,color:#fff,stroke:#154360
+    style Real fill:#386641,color:#fff,stroke:#2d5535
+    style Registered fill:#2d6a4f,color:#fff,stroke:#1b4332
+    style Injection fill:#7d6608,color:#fff,stroke:#5c4b06
+    style UseMock fill:#2d6a4f,color:#fff,stroke:#1b4332
+    style UseReal fill:#c0392b,color:#fff,stroke:#922b21
+    style NotRegistered fill:#555,color:#fff,stroke:#333
 ```
 
 When `mockSecurityServiceEnabled()` returns `false`, the property is `"false"`, the second
@@ -442,6 +589,36 @@ class AuthorControllerMockServiceTest extends AbstractServerTest implements Auth
 The inner class must be `static` so that Micronaut can instantiate it without an instance
 of the outer class (which is the test itself).
 
+```mermaid
+flowchart LR
+    subgraph Test1["AuthorControllerMockServiceTest"]
+        direction TB
+        SN1["getSpecName()\n→ 'AuthorControllerMockServiceTest'"]
+        CTX1["ApplicationContext\nspec.name = AuthorControllerMockServiceTest"]
+        MOCK1["AuthorServiceMock\n@Requires matches → REGISTERED"]
+        SN1 -->|"provides property"| CTX1
+        CTX1 -->|"activates bean"| MOCK1
+    end
+
+    subgraph Test2["AuthorControllerTest"]
+        direction TB
+        SN2["getSpecName()\n→ null"]
+        CTX2["ApplicationContext\nspec.name not set"]
+        MOCK2["AuthorServiceMock\n@Requires fails → NOT registered"]
+        SN2 -->|"no property"| CTX2
+        CTX2 -->|"skips bean"| MOCK2
+    end
+
+    style Test1 fill:#1b4332,color:#fff,stroke:#0d2818
+    style Test2 fill:#641e16,color:#fff,stroke:#4a1711
+    style SN1 fill:#386641,color:#fff,stroke:#2d5535
+    style CTX1 fill:#1a5276,color:#fff,stroke:#154360
+    style MOCK1 fill:#2d6a4f,color:#fff,stroke:#1b4332
+    style SN2 fill:#922b21,color:#fff,stroke:#7b241c
+    style CTX2 fill:#1a5276,color:#fff,stroke:#154360
+    style MOCK2 fill:#555,color:#fff,stroke:#333
+```
+
 **Activation scope**: `getSpecName()` returns `"AuthorControllerMockServiceTest"`, which is
 passed as the `spec.name` property via `TestPropertyProvider.getProperties()`. Since each test
 class has its own `ApplicationContext`, the mock is only activated in this specific test.
@@ -464,6 +641,39 @@ to depend on a real API. The solution: spin up a **second HTTP server** inside t
 responds as if it were the OMDB API, and configure the application to point to it.
 
 ### Technical Deep Dive
+
+```mermaid
+---
+title: Secondary Embedded Server Architecture
+---
+flowchart LR
+    Test["MovieControllerTest\n(JUnit 5)"]
+
+    subgraph Mock["Mock OMDB Server (omdbPort)"]
+        OM["OmdbMock\n@Controller('/')\n@Requires(spec.name)"]
+    end
+    
+    subgraph Main["Main EmbeddedServer (random port)"]
+        MC["MovieController\n@ExecuteOn(BLOCKING)"]
+        OC["OmdbClient"]
+    end
+    DB[(PostgreSQL\nTestcontainer)]
+    Test -->|"sends HTTP request"| MC
+    MC -->|"delegates to"| OC
+    OC -->|"calls mock API"| OM
+    OM -->|"returns JSON"| OC
+    MC -->|"returns response"| Test
+    Main -->|"manages schema\n(CREATE_DROP)"| DB
+    Mock -.->|"reads only\n(schema-generate: NONE)"| DB
+
+    style Test fill:#1a1a2e,color:#e0e0e0,stroke:#16213e
+    style Main fill:#0f3460,stroke:#1a1a6e
+    style MC fill:#1a5276,color:#fff,stroke:#154360
+    style OC fill:#1a5276,color:#fff,stroke:#154360
+    style Mock fill:#4a1942,stroke:#6c2463
+    style OM fill:#6c3483,color:#fff,stroke:#4a235a
+    style DB fill:#1e8449,color:#fff,stroke:#196f3d
+```
 
 ```java
 class MovieControllerTest extends AbstractServerTest {
@@ -521,7 +731,7 @@ Result: the tables disappear for the main server, and all tests fail with
 The solution is to explicitly configure `schema-generate: NONE` on the second server:
 
 ```java
-config.put("datasources.default.schema-generate", "NONE");
+config.put("datasources.default.schema-generate","NONE");
 ```
 
 **`SocketUtils.findAvailableTcpPort()`**: Finds a random available TCP port to avoid
@@ -555,6 +765,7 @@ def "save author with invalid name fails"() {
 In JUnit 5, we use `@ParameterizedTest` with `@MethodSource`:
 
 ```java
+
 @ParameterizedTest(name = "saveAuthor(\"{0}\") triggers ConstraintViolationException")
 @MethodSource("saveAuthorInvalidArgs")
 void saveAuthorTriggersConstraintViolation(String name, String field, String errorMessage) {
@@ -606,39 +817,91 @@ This was the hardest bug to diagnose. The scenario:
 
 When `@MicronautTest(transactional = true)` (the default):
 
-```
-Test thread (transaction A):
-  1. test method starts -> transaction A opens
-  2. httpClient.exchange(POST /authors) -> HTTP request sent
+```mermaid
+sequenceDiagram
+    box rgb(69, 123, 157) Test Process
+        participant Test as Test Thread
+    end
+    box rgb(51, 103, 145) Database
+        participant DB as PostgreSQL
+    end
+    box rgb(106, 153, 78) Server Process
+        participant Server as Server Thread
+    end
 
-Server thread (transaction B):
-  3. AuthorController receives request
-  4. AuthorService.saveAuthor() -> transaction B opens
-  5. authorRepository.save() -> INSERT executed
-  6. transaction B COMMIT -> data persisted in database
+    Note over Test: transactional = true (DEFAULT)
 
-Test thread (transaction A, continuing):
-  7. response received, assertions OK
-  8. authorRepository.deleteAll() -> DELETE executed inside transaction A
-  9. @AfterEach checkLeakage() -> SELECT COUNT(*) inside transaction A (sees 0 — correct locally)
-  10. transaction A ROLLBACK -> the DELETE from step 8 is reverted
-  11. The data from step 5 REMAINS in the database -> next test sees "leaked" data
+    rect rgb(232, 245, 233)
+        Note right of Test: Test-managed transaction
+        Test ->> DB: BEGIN transaction A
+    end
+
+    Test ->> Server: sends HTTP request (POST /authors)
+    activate Server
+
+    rect rgb(255, 243, 224)
+        Note right of Server: Server-managed transaction
+        Server ->> DB: BEGIN transaction B
+        Server ->> DB: INSERT author
+        Server ->> DB: COMMIT transaction B
+    end
+
+    Server -->> Test: returns 201 Created
+    deactivate Server
+    Note over Test: assertions pass
+
+    rect rgb(232, 245, 233)
+        Note right of Test: Still inside transaction A
+        Test ->> DB: DELETE FROM author (inside tx A)
+        Test ->> DB: SELECT COUNT(*) (inside tx A)
+        Note over Test: sees 0 — looks clean
+    end
+
+    rect rgb(255, 200, 200)
+        Test ->> DB: ROLLBACK transaction A
+        Note over DB: DELETE is reverted!
+        Note over DB: Author data REMAINS
+        Note over Test, DB: Next test sees "leaked" data
+    end
 ```
 
 When `@MicronautTest(transactional = false)`:
 
-```
-Test thread (no managed transaction):
-  1. test method starts (no transaction)
-  2. httpClient.exchange(POST /authors)
+```mermaid
+sequenceDiagram
+    box rgb(69, 123, 157) Test Process
+        participant Test as Test Thread
+    end
+    box rgb(51, 103, 145) Database
+        participant DB as PostgreSQL
+    end
+    box rgb(106, 153, 78) Server Process
+        participant Server as Server Thread
+    end
 
-Server thread (transaction B):
-  3-6. Same flow, COMMIT
+    Note over Test: transactional = false
 
-Test thread (continuing):
-  7. response received, assertions OK
-  8. authorRepository.deleteAll() -> DELETE executed and COMMITTED immediately
-  9. @AfterEach checkLeakage() -> SELECT COUNT(*) returns 0 (data actually deleted)
+    Test ->> Server: sends HTTP request (POST /authors)
+    activate Server
+
+    rect rgb(255, 243, 224)
+        Note right of Server: Server-managed transaction
+        Server ->> DB: BEGIN transaction B
+        Server ->> DB: INSERT author
+        Server ->> DB: COMMIT transaction B
+    end
+
+    Server -->> Test: returns 201 Created
+    deactivate Server
+    Note over Test: assertions pass
+
+    rect rgb(200, 255, 200)
+        Note right of Test: No wrapping transaction
+        Test ->> DB: DELETE FROM author (auto-commit)
+        Note over DB: DELETE is committed immediately
+        Test ->> DB: SELECT COUNT(*) returns 0
+        Note over Test, DB: Database is clean for next test
+    end
 ```
 
 The inverse problem also occurred: `AuthorControllerFindAuthorTest` called `saveAuthor()` in
@@ -673,7 +936,56 @@ for synchronous I/O), all requests on that event loop are stalled.
 In Micronaut 2, there was no detection for this. In Micronaut 4, detection is active by default
 (`micronaut.netty.event-loops.default.blocking-allowed=false`).
 
+```mermaid
+flowchart TD
+    Request["Incoming HTTP Request"]
+
+    subgraph EL["Netty Event Loop (few threads)"]
+        direction TB
+        Decode["Decode request"]
+        Route["Route to controller"]
+        Decode -->|"parses"| Route
+    end
+
+    subgraph Without["Without @ExecuteOn"]
+        direction TB
+        Handler1["MovieController.findMovie()"]
+        Block1["OmdbClient.blockingCall()"]
+        Handler1 -->|"calls synchronously"| Block1
+        Block1 -->|"BLOCKS event loop thread\nall other requests stall"| Error["HttpClientException:\nBlockingHttpClient on\nevent loop thread"]
+    end
+
+    subgraph With["With @ExecuteOn(BLOCKING)"]
+        direction TB
+        Offload["Offload to blocking\nthread pool"]
+        Handler2["MovieController.findMovie()"]
+        Block2["OmdbClient.blockingCall()"]
+        Offload -->|"runs on pool thread"| Handler2
+        Handler2 -->|"calls synchronously"| Block2
+        Block2 -->|"blocks a pool thread\nevent loop stays free"| OK["Response returned"]
+    end
+
+    Request -->|"arrives at"| EL
+    EL -->|"dispatches directly"| Without
+    EL -->|"offloads to pool"| With
+
+    style Request fill:#264653,color:#fff,stroke:#1d3344
+    style EL fill:#1a5276,color:#fff,stroke:#154360
+    style Decode fill:#457b9d,color:#fff,stroke:#1d3557
+    style Route fill:#457b9d,color:#fff,stroke:#1d3557
+    style Without fill:#641e16,color:#fff,stroke:#4a1711
+    style Handler1 fill:#c0392b,color:#fff,stroke:#922b21
+    style Block1 fill:#922b21,color:#fff,stroke:#7b241c
+    style Error fill:#641e16,color:#fff,stroke:#4a1711
+    style With fill:#1b4332,color:#fff,stroke:#0d2818
+    style Offload fill:#2d6a4f,color:#fff,stroke:#1b4332
+    style Handler2 fill:#386641,color:#fff,stroke:#2d5535
+    style Block2 fill:#386641,color:#fff,stroke:#2d5535
+    style OK fill:#2d6a4f,color:#fff,stroke:#1b4332
+```
+
 ```java
+
 @Controller("/movies")
 @ExecuteOn(TaskExecutors.BLOCKING)
 public class MovieController {
@@ -704,14 +1016,14 @@ test class in `com.example.controllers` tried to extend a base class in `com.exa
 
 ### Technical Deep Dive
 
-| Element                        | Groovy (implicit)  | Java (required)         |
-|--------------------------------|--------------------|-------------------------|
-| `AbstractIntegrationTest`      | `public`           | `public`                |
-| `AbstractServerTest`           | `public`           | `public`                |
-| `authorRepository` (field)     | `public`           | `protected`             |
-| `bookRepository` (field)       | `public`           | `protected`             |
-| `getClient()` (method)         | `public`           | `protected` or `public` |
-| `mockSecurityServiceEnabled()` | `public`           | `protected`             |
+| Element                        | Groovy (implicit) | Java (required)         |
+|--------------------------------|-------------------|-------------------------|
+| `AbstractIntegrationTest`      | `public`          | `public`                |
+| `AbstractServerTest`           | `public`          | `public`                |
+| `authorRepository` (field)     | `public`          | `protected`             |
+| `bookRepository` (field)       | `public`          | `protected`             |
+| `getClient()` (method)         | `public`          | `protected` or `public` |
+| `mockSecurityServiceEnabled()` | `public`          | `protected`             |
 
 **Typical error that would appear:**
 
@@ -845,16 +1157,16 @@ java.lang.IllegalArgumentException: The argument does not represent an annotatio
 
 The required test dependencies and why each one is needed:
 
-| Dependency                     | Purpose                                                |
-|--------------------------------|--------------------------------------------------------|
-| `micronaut-test-junit5`        | Integrates `@MicronautTest` with JUnit 5               |
-| `junit-jupiter-api`            | `@Test`, `@BeforeEach`, etc. annotations               |
-| `junit-jupiter-engine`         | Engine that discovers and executes JUnit 5 tests       |
-| `junit-jupiter-params`         | `@ParameterizedTest`, `@MethodSource`, `@CsvSource`    |
-| `assertj-core`                 | Fluent assertions (`assertThat(x).isEqualTo(y)`)       |
-| `testcontainers`               | Framework for Docker containers in tests               |
-| `testcontainers:junit-jupiter` | Testcontainers + JUnit 5 integration (`@Testcontainers`)|
-| `testcontainers:postgresql`    | Pre-configured PostgreSQL container                    |
+| Dependency                     | Purpose                                                  |
+|--------------------------------|----------------------------------------------------------|
+| `micronaut-test-junit5`        | Integrates `@MicronautTest` with JUnit 5                 |
+| `junit-jupiter-api`            | `@Test`, `@BeforeEach`, etc. annotations                 |
+| `junit-jupiter-engine`         | Engine that discovers and executes JUnit 5 tests         |
+| `junit-jupiter-params`         | `@ParameterizedTest`, `@MethodSource`, `@CsvSource`      |
+| `assertj-core`                 | Fluent assertions (`assertThat(x).isEqualTo(y)`)         |
+| `testcontainers`               | Framework for Docker containers in tests                 |
+| `testcontainers:junit-jupiter` | Testcontainers + JUnit 5 integration (`@Testcontainers`) |
+| `testcontainers:postgresql`    | Pre-configured PostgreSQL container                      |
 
 ### Technical Deep Dive
 
@@ -880,7 +1192,7 @@ and the Groovy compiler. With JUnit 5, we replaced them with:
 |------------------------------------------|-------------------------------------------|---------------------------------------|
 | `fixtures/ConfigurationFixture.groovy`   | Absorbed into `AbstractIntegrationTest`   | Properties via `TestPropertyProvider` |
 | `fixtures/PostgresqlFixture.groovy`      | `PostgresqlTestContainer.java`            | Manual singleton instead of trait     |
-| `fixtures/RepositoriesFixture.groovy`    | Absorbed into `AbstractIntegrationTest`   | `@Inject` fields in base class       |
+| `fixtures/RepositoriesFixture.groovy`    | Absorbed into `AbstractIntegrationTest`   | `@Inject` fields in base class        |
 | `fixtures/AuthorFixture.groovy`          | `fixtures/AuthorFixture.java`             | Trait -> Interface + default methods  |
 | `fixtures/BookFixture.groovy`            | `fixtures/BookFixture.java`               | Trait -> Interface + default methods  |
 | `ApplicationContextSpecification.groovy` | `AbstractIntegrationTest.java`            | Specification -> abstract class       |
@@ -918,9 +1230,11 @@ When creating new tests in this project, remember:
 - [ ] Clean up data at the end of each test (`repository.deleteAll()`) in the correct order (children before parents)
 - [ ] Use `implements AuthorFixture, BookFixture` for creation utility methods
 - [ ] For global mocks: `@Primary` + `@Requires(property/env)` in a separate class
-- [ ] For per-test mocks: `@Primary` + `@Requires(property = "spec.name")` as inner `static` class + override `getSpecName()`
+- [ ] For per-test mocks: `@Primary` + `@Requires(property = "spec.name")` as inner `static` class + override
+  `getSpecName()`
 - [ ] For secondary mock servers: always `schema-generate: NONE` and `SocketUtils.findAvailableTcpPort()`
 - [ ] Controllers with blocking HTTP calls: `@ExecuteOn(TaskExecutors.BLOCKING)`
 - [ ] New DTOs that go through JSON: annotate with `@Serdeable`
 - [ ] Comparing `HttpStatus`: use `assertEquals()` instead of `assertThat()` (Java 25 ambiguity)
-- [ ] Imports: `jakarta.*` (never `javax.*`), `io.micronaut.core.annotation.Nullable` (never `javax.annotation.Nullable`)
+- [ ] Imports: `jakarta.*` (never `javax.*`), `io.micronaut.core.annotation.Nullable` (never
+  `javax.annotation.Nullable`)

@@ -26,3 +26,6 @@ openapi.properties
 demo
 demo.build_artifacts.txt
 /.mvn/
+
+.claude/
+

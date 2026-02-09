@@ -1,12 +1,12 @@
 package com.example.model;
 
-import io.micronaut.core.annotation.Introspected;
+import io.micronaut.serde.annotation.Serdeable;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 /**
  * DTO for {@link com.example.entities.BookEntity}.
  */
-@Introspected
+@Serdeable
 public class Book {
 
     @Schema(required = true, description = "The book title", example = "Carrie")

@@ -5,7 +5,7 @@ import io.micronaut.http.HttpResponse;
 import io.micronaut.http.hateoas.JsonError;
 import io.micronaut.http.server.exceptions.ExceptionHandler;
 
-import javax.inject.Singleton;
+import jakarta.inject.Singleton;
 
 /**
  * Handles {@link UserUnauthorizedException} and returns 401.

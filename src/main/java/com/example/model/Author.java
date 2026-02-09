@@ -1,7 +1,7 @@
 package com.example.model;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import io.micronaut.core.annotation.Introspected;
+import io.micronaut.serde.annotation.Serdeable;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.List;
@@ -9,7 +9,7 @@ import java.util.List;
 /**
  * DTO for {@link com.example.entities.AuthorEntity}.
  */
-@Introspected
+@Serdeable
 public class Author {
 
     @Schema(required = true, description = "The author id", example = "42")

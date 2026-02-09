@@ -6,11 +6,11 @@ import com.example.model.Author;
 import com.example.repositories.AuthorRepository;
 import com.example.repositories.BookRepository;
 
-import javax.inject.Singleton;
-import javax.transaction.Transactional;
-import javax.validation.Valid;
-import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.NotNull;
+import jakarta.inject.Singleton;
+import jakarta.transaction.Transactional;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import java.util.Optional;
 
 @Singleton

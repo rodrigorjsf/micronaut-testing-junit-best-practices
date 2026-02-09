@@ -1,11 +1,10 @@
 package com.example.controllers;
 
-import io.micronaut.core.annotation.Introspected;
+import io.micronaut.serde.annotation.Serdeable;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotBlank;
 
-import javax.validation.constraints.NotBlank;
-
-@Introspected
+@Serdeable
 public class CreateAuthorRequest {
 
     @NotBlank

@@ -1,6 +1,6 @@
 package com.example.omdb;
 
-import javax.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotBlank;
 import java.util.Optional;
 
 /**

@@ -2,7 +2,7 @@ package com.example.security;
 
 import io.micronaut.context.annotation.DefaultImplementation;
 
-import javax.annotation.Nullable;
+import io.micronaut.core.annotation.Nullable;
 
 /**
  * Security service

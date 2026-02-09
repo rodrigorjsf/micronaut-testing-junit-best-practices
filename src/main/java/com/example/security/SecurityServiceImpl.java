@@ -1,10 +1,9 @@
 package com.example.security;
 
+import io.micronaut.core.annotation.Nullable;
+import jakarta.inject.Singleton;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.annotation.Nullable;
-import javax.inject.Singleton;
 
 /**
  * Very naive security service.

@@ -31,21 +31,46 @@
         <!-- Micronaut runtime type: netty-based HTTP server -->
         <micronaut.runtime>netty</micronaut.runtime>
 
-        <!-- Disable Micronaut test resources (we manage Testcontainers manually) -->
-        <micronaut.test.resources.enabled>false</micronaut.test.resources.enabled>
+        <micronaut.test.resources.enabled>true</micronaut.test.resources.enabled>
 
         <!-- Dependency versions not managed by the Micronaut BOM -->
-        <testcontainers.version>2.0.3</testcontainers.version>
         <postgresql.version>42.7.9</postgresql.version>
         <assertj.version>3.27.3</assertj.version>
+        <micronaut-test-resources-testcontainers.version>2.10.1</micronaut-test-resources-testcontainers.version>
+        <!-- docker-java 3.7.0: supports Docker Engine 29+ (minimum API version 1.44);
+             the BOM's default 3.4.1 (via testcontainers 1.20.6) uses API < 1.44 which
+             Docker 29+ rejects with status 400 -->
+        <docker-java.version>3.7.0</docker-java.version>
     </properties>
 
-    <repositories>
-        <repository>
-            <id>central</id>
-            <url>https://repo.maven.apache.org/maven2</url>
-        </repository>
-    </repositories>
+<!--    <repositories>-->
+<!--        <repository>-->
+<!--            <id>central</id>-->
+<!--            <url>https://repo.maven.apache.org/maven2</url>-->
+<!--        </repository>-->
+<!--    </repositories>-->
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- Override docker-java from testcontainers 1.20.6 (3.4.1) to 3.7.0:
+                 Docker Engine 29+ requires API >= 1.44, which 3.4.1 does not support -->
+            <dependency>
+                <groupId>com.github.docker-java</groupId>
+                <artifactId>docker-java-api</artifactId>
+                <version>${docker-java.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.github.docker-java</groupId>
+                <artifactId>docker-java-transport-zerodep</artifactId>
+                <version>${docker-java.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.github.docker-java</groupId>
+                <artifactId>docker-java-transport</artifactId>
+                <version>${docker-java.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
 
@@ -197,31 +222,11 @@
             <version>${assertj.version}</version>
             <scope>test</scope>
         </dependency>
-
-        <!-- Testcontainers Core: framework for running disposable Docker containers
-             during integration tests -->
+        <!-- Micronaut Test Resources client: bridges the test JVM to the
+             test-resources-service, resolving datasource properties automatically -->
         <dependency>
-            <groupId>org.testcontainers</groupId>
-            <artifactId>testcontainers</artifactId>
-            <version>${testcontainers.version}</version>
-            <scope>test</scope>
-        </dependency>
-
-        <!-- Testcontainers JUnit Jupiter: JUnit 5 integration for Testcontainers,
-             providing @Testcontainers and @Container annotations -->
-        <dependency>
-            <groupId>org.testcontainers</groupId>
-            <artifactId>testcontainers-junit-jupiter</artifactId>
-            <version>${testcontainers.version}</version>
-            <scope>test</scope>
-        </dependency>
-
-        <!-- Testcontainers PostgreSQL module: pre-configured PostgreSQL container
-             for integration testing with a real database -->
-        <dependency>
-            <groupId>org.testcontainers</groupId>
-            <artifactId>testcontainers-postgresql</artifactId>
-            <version>${testcontainers.version}</version>
+            <groupId>io.micronaut.testresources</groupId>
+            <artifactId>micronaut-test-resources-client</artifactId>
             <scope>test</scope>
         </dependency>
 
@@ -234,8 +239,26 @@
             <plugin>
                 <groupId>io.micronaut.maven</groupId>
                 <artifactId>micronaut-maven-plugin</artifactId>
+                <version>4.11.6</version>
                 <configuration>
                     <configFile>aot-${packaging}.properties</configFile>
+                    <classpathInference>false</classpathInference>
+                    <!-- Force Docker API version 1.44 in the test-resources-service JVM:
+                         Docker Engine 29+ requires API >= 1.44, but docker-java 3.4.1
+                         (from testcontainers 1.20.6) defaults to an older API version -->
+                    <testResourcesSystemProperties>
+                        <api.version>1.44</api.version>
+                    </testResourcesSystemProperties>
+                    <testResourcesDependencies>
+                        <dependency>
+                            <groupId>org.testcontainers</groupId>
+                            <artifactId>testcontainers-jdbc</artifactId>
+                        </dependency>
+                        <dependency>
+                            <groupId>io.micronaut.testresources</groupId>
+                            <artifactId>micronaut-test-resources-jdbc-postgresql</artifactId>
+                        </dependency>
+                    </testResourcesDependencies>
                 </configuration>
             </plugin>
             <!-- Maven Compiler Plugin: configures Java compilation with Micronaut
@@ -291,13 +314,6 @@
                     </compilerArgs>
                 </configuration>
             </plugin>
-
-            <!-- Maven Surefire Plugin: runs unit and integration tests with JUnit 5 -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-            </plugin>
-
             <!-- Native Maven Plugin: Handles native image build time initialization dependencies -->
             <plugin>
                 <groupId>org.graalvm.buildtools</groupId>

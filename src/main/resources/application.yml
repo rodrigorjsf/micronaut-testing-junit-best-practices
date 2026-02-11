@@ -10,14 +10,14 @@ micronaut:
         paths: classpath:META-INF/swagger/views/swagger-ui
         mapping: /swagger-ui/**
 
-datasources:
-  default:
-    url: ${DATASOURCES_DEFAULT_URL:`jdbc:postgresql://localhost:5432/micronaut`}
-    driverClassName: org.postgresql.Driver
-    username: ${DATASOURCES_DEFAULT_USERNAME:micronaut}
-    password: ${DATASOURCES_DEFAULT_PASSWORD:secret}
-    dialect: POSTGRES
-    schema-generate: create_drop
+#datasources:
+#  default:
+#    url: ${DATASOURCES_DEFAULT_URL}
+#    driverClassName: org.postgresql.Driver
+#    username: ${DATASOURCES_DEFAULT_USERNAME}
+#    password: ${DATASOURCES_DEFAULT_PASSWORD}
+#    dialect: POSTGRES
+#    schema-generate: create_drop
 ---
 omdb:
   base-url: http://www.omdbapi.com/

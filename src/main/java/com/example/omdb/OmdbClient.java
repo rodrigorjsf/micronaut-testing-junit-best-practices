@@ -4,8 +4,8 @@ import io.micronaut.context.annotation.Value;
 import io.micronaut.http.annotation.Get;
 import io.micronaut.http.annotation.QueryValue;
 import io.micronaut.http.client.annotation.Client;
-
 import jakarta.validation.constraints.NotBlank;
+
 import java.util.Optional;
 
 @Client("${omdb.base-url}")

@@ -1,7 +1,6 @@
 package com.example.controllers;
 
 import com.example.AbstractServerTest;
-import com.example.PostgresqlTestContainer;
 import com.example.omdb.Movie;
 import io.micronaut.context.ApplicationContext;
 import io.micronaut.context.annotation.Requires;
@@ -52,13 +51,12 @@ class MovieControllerTest extends AbstractServerTest {
 
     @BeforeAll
     void startOmdbMock() {
-        PostgresqlTestContainer.init();
         Map<String, Object> config = new HashMap<>();
         config.put("micronaut.server.port", omdbPort);
         config.put("spec.name", "MovieControllerTest");
-        config.put("datasources.default.url", PostgresqlTestContainer.getJdbcUrl());
-        config.put("datasources.default.username", PostgresqlTestContainer.getUsername());
-        config.put("datasources.default.password", PostgresqlTestContainer.getPassword());
+        config.put("datasources.default.db-type", "postgres");
+        config.put("datasources.default.dialect", "POSTGRES");
+        config.put("datasources.default.driver-class-name", "org.postgresql.Driver");
         config.put("datasources.default.schema-generate", "NONE");
         config.put("mockSecurityService", "true");
         omdbServer = ApplicationContext.run(EmbeddedServer.class, config);

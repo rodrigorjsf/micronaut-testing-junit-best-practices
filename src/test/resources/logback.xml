@@ -5,18 +5,19 @@
         <!-- encoders are assigned the type
              ch.qos.logback.classic.encoder.PatternLayoutEncoder by default -->
         <encoder>
-            <pattern>%cyan(%d{HH:mm:ss.SSS}) %gray([%thread]) %highlight(%-5level) %magenta(%logger{36}) - %msg%n</pattern>
+            <pattern>%cyan(%d{HH:mm:ss.SSS}) %gray([%thread]) %highlight(%-5level) %magenta(%logger{36}) - %msg%n
+            </pattern>
         </encoder>
     </appender>
 
     <root level="info">
-        <appender-ref ref="STDOUT" />
+        <appender-ref ref="STDOUT"/>
     </root>
 
-    <logger name="io.micronaut.data.query" level="DEBUG" />
-    <logger name="com.zaxxer.hikari" level="OFF" />
+    <logger name="io.micronaut.data.query" level="DEBUG"/>
+    <logger name="com.zaxxer.hikari" level="OFF"/>
 
     <!-- The see the HTTP client request in the logs when running controller tests -->
-    <logger name="io.micronaut.http.client" level="TRACE" />
-    <logger name="com.example" level="DEBUG" />
+    <logger name="io.micronaut.http.client" level="TRACE"/>
+    <logger name="com.example" level="DEBUG"/>
 </configuration>

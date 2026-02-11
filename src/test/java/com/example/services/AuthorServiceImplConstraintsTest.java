@@ -21,6 +21,26 @@ class AuthorServiceImplConstraintsTest extends AbstractIntegrationTest {
     @Inject
     AuthorService authorService;
 
+    static Stream<Arguments> saveAuthorInvalidArgs() {
+        return Stream.of(
+                Arguments.of("", "saveAuthor.name", "must not be blank"),
+                Arguments.of(null, "saveAuthor.name", "must not be blank")
+        );
+    }
+
+    static Stream<Arguments> addBookToAuthorInvalidArgs() {
+        return Stream.of(
+                Arguments.of(null, "addBookToAuthor.saveBook", "must not be null")
+        );
+    }
+
+    static Stream<Arguments> findAuthorByNameInvalidArgs() {
+        return Stream.of(
+                Arguments.of("", "findAuthorByName.name", "must not be blank"),
+                Arguments.of(null, "findAuthorByName.name", "must not be blank")
+        );
+    }
+
     @ParameterizedTest(name = "saveAuthor(\"{0}\") triggers ConstraintViolationException")
     @MethodSource("saveAuthorInvalidArgs")
     void saveAuthorTriggersConstraintViolation(String name, String field, String errorMessage) {
@@ -31,13 +51,6 @@ class AuthorServiceImplConstraintsTest extends AbstractIntegrationTest {
                 .anyMatch(v -> v.getPropertyPath().toString().contains(field));
         assertThat(ex.getConstraintViolations())
                 .anyMatch(v -> v.getMessage().contains(errorMessage));
-    }
-
-    static Stream<Arguments> saveAuthorInvalidArgs() {
-        return Stream.of(
-                Arguments.of("", "saveAuthor.name", "must not be blank"),
-                Arguments.of(null, "saveAuthor.name", "must not be blank")
-        );
     }
 
     @ParameterizedTest(name = "addBookToAuthor({0}) triggers ConstraintViolationException")
@@ -52,12 +65,6 @@ class AuthorServiceImplConstraintsTest extends AbstractIntegrationTest {
                 .anyMatch(v -> v.getMessage().contains(errorMessage));
     }
 
-    static Stream<Arguments> addBookToAuthorInvalidArgs() {
-        return Stream.of(
-                Arguments.of(null, "addBookToAuthor.saveBook", "must not be null")
-        );
-    }
-
     @ParameterizedTest(name = "findAuthorByName(\"{0}\") triggers ConstraintViolationException")
     @MethodSource("findAuthorByNameInvalidArgs")
     void findAuthorByNameTriggersConstraintViolation(String name, String field, String errorMessage) {
@@ -68,12 +75,5 @@ class AuthorServiceImplConstraintsTest extends AbstractIntegrationTest {
                 .anyMatch(v -> v.getPropertyPath().toString().contains(field));
         assertThat(ex.getConstraintViolations())
                 .anyMatch(v -> v.getMessage().contains(errorMessage));
-    }
-
-    static Stream<Arguments> findAuthorByNameInvalidArgs() {
-        return Stream.of(
-                Arguments.of("", "findAuthorByName.name", "must not be blank"),
-                Arguments.of(null, "findAuthorByName.name", "must not be blank")
-        );
     }
 }

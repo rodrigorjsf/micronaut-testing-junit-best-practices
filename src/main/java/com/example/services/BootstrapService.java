@@ -6,7 +6,6 @@ import io.micronaut.context.annotation.Requires;
 import io.micronaut.context.env.Environment;
 import io.micronaut.context.event.StartupEvent;
 import io.micronaut.runtime.event.annotation.EventListener;
-
 import jakarta.inject.Singleton;
 
 @Singleton
@@ -17,7 +16,7 @@ public class BootstrapService {
     private final AuthorRepository authorRepository;
 
     public BootstrapService(AuthorService authorService,
-                       AuthorRepository authorRepository) {
+                            AuthorRepository authorRepository) {
         this.authorService = authorService;
         this.authorRepository = authorRepository;
     }

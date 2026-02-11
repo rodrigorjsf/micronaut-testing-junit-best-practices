@@ -7,9 +7,9 @@ import io.micronaut.data.jdbc.annotation.JdbcRepository;
 import io.micronaut.data.model.query.builder.sql.Dialect;
 import io.micronaut.data.repository.CrudRepository;
 import io.micronaut.validation.Validated;
-
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -19,6 +19,22 @@ import java.util.stream.Collectors;
 @Validated
 @JdbcRepository(dialect = Dialect.POSTGRES)
 public interface AuthorRepository extends CrudRepository<AuthorEntity, Long> {
+
+    /**
+     * Map an {@link AuthorEntity} to a {@link Author}.
+     *
+     * @param entity The author entity
+     * @return The author with the books
+     */
+    static Author dtoOfEntity(@NotNull AuthorEntity entity) {
+        return new Author(
+                entity.id(),
+                entity.name(),
+                entity.books().stream()
+                        .map(BookRepository::dtoOfEntity)
+                        .collect(Collectors.toList())
+        );
+    }
 
     /**
      * Find an author by name.
@@ -32,21 +48,5 @@ public interface AuthorRepository extends CrudRepository<AuthorEntity, Long> {
 
     @Join(value = "books", type = Join.Type.LEFT_FETCH)
     Optional<AuthorEntity> findByName(@NotBlank String name);
-
-    /**
-     * Map an {@link AuthorEntity} to a {@link Author}.
-     *
-     * @param entity The author entity
-     * @return The author with the books
-     */
-    static Author dtoOfEntity(@NotNull AuthorEntity entity) {
-        return new Author(
-                entity.getId(),
-                entity.getName(),
-                entity.getBooks().stream()
-                        .map(BookRepository::dtoOfEntity)
-                        .collect(Collectors.toList())
-        );
-    }
 
 }

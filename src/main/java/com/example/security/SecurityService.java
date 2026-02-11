@@ -1,7 +1,6 @@
 package com.example.security;
 
 import io.micronaut.context.annotation.DefaultImplementation;
-
 import io.micronaut.core.annotation.Nullable;
 
 /**

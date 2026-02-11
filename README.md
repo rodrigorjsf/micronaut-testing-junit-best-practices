@@ -5,9 +5,6 @@
   <img alt="Micronaut 4.10.7" src="https://img.shields.io/badge/Micronaut-4.10.7-FF6B35?style=flat-square&logo=micronaut&logoColor=white" />
   <img alt="Maven" src="https://img.shields.io/badge/Maven-3.9+-C71A36?style=flat-square&logo=apache-maven&logoColor=white" />
   <img alt="JUnit 5" src="https://img.shields.io/badge/JUnit-5-25A162?style=flat-square&logo=junit5&logoColor=white" />
-  <img alt="PostgreSQL" src="https://img.shields.io/badge/PostgreSQL-16-336791?style=flat-square&logo=postgresql&logoColor=white" />
-  <img alt="Docker" src="https://img.shields.io/badge/Docker-29.2.1-2496ED?style=flat-square&logo=docker&logoColor=white" />
-  <img alt="Testcontainers" src="https://img.shields.io/badge/Testcontainers-2.0.3-9B59B6?style=flat-square&logo=docker&logoColor=white" />
 </p>
 
 This project is a fork

@@ -15,10 +15,10 @@ class BookRepositoryTest extends AbstractIntegrationTest implements AuthorFixtur
         AuthorEntity author = saveAuthor("Stephen King");
 
         BookEntity book = new BookEntity("The Stand", 550, author);
-        bookRepository.save(book);
+        book = bookRepository.save(book);
 
-        assertThat(book.getId()).isNotNull();
-        assertThat(book.getDateCreated()).isNotNull();
+        assertThat(book.id()).isNotNull();
+        assertThat(book.dateCreated()).isNotNull();
 
         bookRepository.deleteAll();
         authorRepository.deleteAll();

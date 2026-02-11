@@ -16,10 +16,10 @@ class AuthorRepositoryTest extends AbstractIntegrationTest implements AuthorFixt
     @Test
     void saveAnAuthor() {
         AuthorEntity author = new AuthorEntity("Stephen King");
-        authorRepository.save(author);
+        author = authorRepository.save(author);
 
-        assertThat(author.getId()).isNotNull();
-        assertThat(author.getDateCreated()).isNotNull();
+        assertThat(author.id()).isNotNull();
+        assertThat(author.dateCreated()).isNotNull();
 
         authorRepository.deleteAll();
     }
@@ -37,7 +37,7 @@ class AuthorRepositoryTest extends AbstractIntegrationTest implements AuthorFixt
         assertThat(optAuthor).isPresent();
 
         Author author = optAuthor.get();
-        assertThat(author.getId()).isEqualTo(authorEntity.getId());
+        assertThat(author.getId()).isEqualTo(authorEntity.id());
         assertThat(author.getName()).isEqualTo(name);
         assertThat(author.getBooks()).hasSize(3);
 

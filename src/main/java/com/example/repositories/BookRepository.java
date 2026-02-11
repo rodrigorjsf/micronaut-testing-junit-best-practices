@@ -6,7 +6,6 @@ import io.micronaut.data.jdbc.annotation.JdbcRepository;
 import io.micronaut.data.model.query.builder.sql.Dialect;
 import io.micronaut.data.repository.CrudRepository;
 import io.micronaut.validation.Validated;
-
 import jakarta.validation.constraints.NotNull;
 
 /**
@@ -23,6 +22,6 @@ public interface BookRepository extends CrudRepository<BookEntity, Long> {
      * @return The book
      */
     static Book dtoOfEntity(@NotNull BookEntity entity) {
-        return new Book(entity.getTitle(), entity.getPages());
+        return new Book(entity.title(), entity.pages());
     }
 }

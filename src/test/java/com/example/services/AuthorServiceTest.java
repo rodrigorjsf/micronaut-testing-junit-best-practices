@@ -30,11 +30,11 @@ class AuthorServiceTest extends AbstractIntegrationTest implements AuthorFixture
     @Test
     void addBookToExistingAuthor() {
         AuthorEntity authorEntity = saveAuthor();
-        SaveBook saveBook = createSaveBook(authorEntity.getId());
+        SaveBook saveBook = createSaveBook(authorEntity.id());
 
         authorService.addBookToAuthor(saveBook);
 
-        Author author = authorRepository.findAuthorByName(authorEntity.getName()).orElseThrow();
+        Author author = authorRepository.findAuthorByName(authorEntity.name()).orElseThrow();
         assertThat(author.getBooks()).hasSize(1);
         assertThat(author.getBooks().get(0).getTitle()).isEqualTo(saveBook.getTitle());
         assertThat(author.getBooks().get(0).getPages()).isEqualTo(saveBook.getPages());

@@ -1,90 +1,30 @@
 package com.example.entities;
 
-import io.micronaut.core.annotation.Introspected;
+import io.micronaut.core.annotation.Nullable;
 import io.micronaut.data.annotation.DateCreated;
-
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.Table;
+import io.micronaut.data.annotation.GeneratedValue;
+import io.micronaut.data.annotation.GeneratedValue.Type;
+import io.micronaut.data.annotation.Id;
+import io.micronaut.data.annotation.MappedEntity;
+import io.micronaut.data.annotation.Relation;
 import jakarta.validation.constraints.NotBlank;
 import java.time.LocalDateTime;
-import java.util.HashSet;
 import java.util.Set;
 
-/**
- * Author entity.
- */
-@Introspected
-@Entity
-@Table(name = "author", schema = "public")
-public class AuthorEntity {
+/** Author entity. */
+@MappedEntity(value = "author", schema = "public")
+public record AuthorEntity(
+    @Id @GeneratedValue(value = Type.IDENTITY) @Nullable Long id,
+    @NotBlank String name,
+    @DateCreated @Nullable LocalDateTime dateCreated,
+    @Relation(value = Relation.Kind.ONE_TO_MANY, mappedBy = "author") @Nullable Set<BookEntity> books) {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    @NotBlank
-    @Column
-    private String name;
-
-    @Column
-    @DateCreated
-    private LocalDateTime dateCreated;
-
-    @OneToMany(mappedBy = "author", targetEntity = BookEntity.class)
-    private Set<BookEntity> books = new HashSet<>();
-
+    /**
+     * Compact constructor for creating an AuthorEntity with only a name.
+     * The id and dateCreated are managed by the database.
+     * The books set is initialized as an empty set.
+     */
     public AuthorEntity(@NotBlank String name) {
-        this.name = name;
-    }
-
-    public AuthorEntity() {
-
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public LocalDateTime getDateCreated() {
-        return dateCreated;
-    }
-
-    public void setDateCreated(LocalDateTime dateCreated) {
-        this.dateCreated = dateCreated;
-    }
-
-    public Set<BookEntity> getBooks() {
-        return books;
-    }
-
-    public void setBooks(Set<BookEntity> books) {
-        this.books = books;
-    }
-
-    @Override
-    public String toString() {
-        return "AuthorEntity{" +
-                "id=" + id +
-                ", name='" + name + '\'' +
-                ", dateCreated=" + dateCreated +
-                ", books=" + books +
-                '}';
+        this(null, name, null, Set.of());
     }
 }

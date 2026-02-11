@@ -1,5 +1,15 @@
 # Micronaut Testing Best Practices with JUnit 5
 
+<p align="center">
+  <img alt="Java 25" src="https://img.shields.io/badge/Java-25%20LTS-ED8B00?style=flat-square&logo=java&logoColor=white" />
+  <img alt="Micronaut 4.10.7" src="https://img.shields.io/badge/Micronaut-4.10.7-FF6B35?style=flat-square&logo=micronaut&logoColor=white" />
+  <img alt="Maven" src="https://img.shields.io/badge/Maven-3.9+-C71A36?style=flat-square&logo=apache-maven&logoColor=white" />
+  <img alt="JUnit 5" src="https://img.shields.io/badge/JUnit-5-25A162?style=flat-square&logo=junit5&logoColor=white" />
+  <img alt="PostgreSQL" src="https://img.shields.io/badge/PostgreSQL-16-336791?style=flat-square&logo=postgresql&logoColor=white" />
+  <img alt="Docker" src="https://img.shields.io/badge/Docker-29.2.1-2496ED?style=flat-square&logo=docker&logoColor=white" />
+  <img alt="Testcontainers" src="https://img.shields.io/badge/Testcontainers-2.0.3-9B59B6?style=flat-square&logo=docker&logoColor=white" />
+</p>
+
 This project is a fork
 of [ilopmar/micronaut-testing-best-practices](https://github.com/ilopmar/micronaut-testing-best-practices)
 by [Iván López](https://github.com/ilopmar), converted to a modern Java stack:
@@ -47,10 +57,62 @@ adaptation, see **[docs/CONVERSION_GUIDE.md](docs/CONVERSION_GUIDE.md)**.
 Tests use [Testcontainers](https://www.testcontainers.org/) to automatically start a PostgreSQL
 container, so Docker must be running.
 
+## Test Infrastructure
+
+### Micronaut Test Resources
+
+This project uses **[Micronaut Test Resources](https://micronaut-projects.github.io/micronaut-test/latest/guide/#testResources)**
+to manage PostgreSQL Testcontainers automatically during testing. Instead of manually starting and
+managing containers, the `micronaut-test-resources` server:
+
+1. Starts a PostgreSQL Testcontainer when tests run
+2. Provides dynamically resolved datasource properties (`DATASOURCES_DEFAULT_URL`, `DATASOURCES_DEFAULT_USERNAME`, `DATASOURCES_DEFAULT_PASSWORD`) to the test JVM
+3. Ensures all tests share the same database instance for efficiency
+4. Stops the container when all tests complete
+
+**Key configuration** (see `pom.xml`):
+- `micronaut-test-resources-client`: test dependency that connects to the resource server
+- `testResourcesDependencies`: declares the PostgreSQL JDBC provider and docker-java 3.7.0 (required for Docker Engine 29+)
+- `testResourcesSystemProperties`: passes `api.version=1.44` to ensure docker-java uses the correct Docker API version
+- Surefire `systemPropertyVariables`: configures the server URI so the test JVM can discover the resource server
+
+No manual `@Testcontainers` or `PostgresqlTestContainer` singleton needed—the infrastructure is transparent to tests.
+
+### Java Records as Entities
+
+Entities (`AuthorEntity`, `BookEntity`) are defined as **immutable Java records**, not mutable classes.
+Records provide:
+
+- **Type-safe immutability**: Once constructed, all fields are final
+- **Compile-time generated accessors**: no `getter` methods—use field names directly: `author.id()`, `author.name()`
+- **Clear intent**: the record signature explicitly shows what data the entity holds
+- **Less boilerplate**: no need for constructors, equals, hashCode, toString
+
+**Example:**
+```java
+@MappedEntity(value = "author", schema = "public")
+public record AuthorEntity(
+    @Id @GeneratedValue(value = Type.IDENTITY) @Nullable Long id,
+    @NotBlank String name,
+    @DateCreated @Nullable LocalDateTime dateCreated,
+    @Relation(value = Relation.Kind.ONE_TO_MANY, mappedBy = "author") @Nullable Set<BookEntity> books) {
+
+    public AuthorEntity(@NotBlank String name) {
+        this(null, name, null, Set.of());
+    }
+}
+```
+
+**Key patterns with records:**
+- `@Nullable` on generated fields (`id`, `dateCreated`) and relationships—they're populated by the database
+- Custom constructors for common creation patterns (e.g., `AuthorEntity(String name)`)
+- `repository.save(entity)` returns a new record instance with generated fields populated
+- Accessor method names match component names: `author.id()`, not `author.getId()`
+
 ## Test Strategy
 
 The project covers three levels of testing. All tests share a real PostgreSQL database via
-Testcontainers and a [leakage detector](docs/CONVERSION_GUIDE.md#5-data-leakage-detector)
+Testcontainers (managed by Micronaut Test Resources) and a [leakage detector](docs/CONVERSION_GUIDE.md#5-data-leakage-detector)
 that fails if any test leaves data behind.
 
 ```mermaid
@@ -372,6 +434,20 @@ CLI agent for software engineering.
   version.
 - Requested the documentation structure and level of detail for the Conversion Guide.
 
+**Post-conversion enhancements (Session 4):**
+
+In a follow-up session, the AI:
+- Migrated from manual `PostgresqlTestContainer` to **Micronaut Test Resources**, eliminating boilerplate
+  and providing transparent, server-managed Testcontainers integration
+- Resolved Docker API version incompatibility (Docker Engine 29+ requires API ≥ 1.44, but docker-java 3.4.1
+  uses an older version) by overriding docker-java to 3.7.0 and configuring `testResourcesSystemProperties`
+- Converted `AuthorEntity` and `BookEntity` from mutable classes to immutable **Java records**, adapting all
+  code to use record accessor methods (`id()`, `name()`) instead of getters, and adding custom constructors
+  for flexible entity creation patterns
+- Updated all test files and service methods to work with records, capturing the returned value from `repository.save()`
+  (since records are immutable and return new instances with generated IDs)
+
 **Takeaway:** The AI handled the mechanical work (reading 44 files, rewriting 39 of them,
-diagnosing 6 runtime issues across 4 test runs) while the human provided direction, judgment
-calls, and domain knowledge. The full conversion took approximately 3 sessions.
+diagnosing 6 runtime issues across 4 test runs, plus 10+ additional files in the follow-up session) while
+the human provided direction, judgment calls, and domain knowledge. The full conversion including infrastructure
+modernization took approximately 4 sessions.
